@@ -17,55 +17,53 @@ const app = express(); // запуск Express
 
 app.use(express.json()); // читать JSON в запросах
 
-// GET запрос
-// app.get('/', (req, res) => {
-//   res.send('Hello World!')
-// });
-
-// POST запрос
-// app.post('/auth/login', (req, res) => {
-//   console.log(req.body)
-
-//   // Создать jwt токен
-//   const token = jwt.sign({
-//     email: req.body.email,
-//     fullName: req.body.fullName,
-
-//   }, 'secretKey')
-
-//   res.json({
-//     success: true,
-//     token,
-//   })
-// })
-
+// post запрос
 app.post('/auth/register', registerValidatoin, async (req, res) => {
-  const errors = validationResult(req)
+  try {
+    const errors = validationResult(req)
 
-  if (!errors.isEmpty()) {
-    return res.status(400).json(errors.array())
+    if (!errors.isEmpty()) {
+      return res.status(400).json(errors.array())
+    }
+  
+    const password = req.body.password;
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+  
+    const doc = new UserModel({
+      email: req.body.email,
+      fullName: req.body.fullName,
+      avatarUrl: req.body.avatarUrl,
+      passwordHash,
+    })
+
+    const user = await doc.save();
+
+    const token = jwt.sign(
+      {
+        _id: user._id,
+      },
+      'secret123',
+      {
+        expiresIn: '30d',
+      }
+    );
+
+    res.json({ ...user, token })
   }
+  catch (error) {
+    console.log(error)
 
-  const password = req.body.password;
-  const salt = await bcrypt.genSalt(10);
-  const passwordHash = await bcrypt.hash(password, salt);
-
-  const doc = new UserModel({
-    email: req.body.email,
-    fullName: req.body.fullName,
-    avatarUrl: req.body.avatarUrl,
-    passwordHash,
-  })
-
-  const user = await doc.save();
-
-  res.json(user)
+    res.status(500).json({
+      message: 'Не удалось зарегистрироваться',
+    });
+  }
 })
 
 // Запуск сервера
-app.listen(4444, (err) => {
-  if (err) {
-    return console.log(err);
+app.listen(4444, (error) => {
+  if (error) {
+    return console.log(error);
   }
 
   console.log('Server OK')
