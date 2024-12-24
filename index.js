@@ -1,11 +1,10 @@
 import express from "express";
 import mongoose from "mongoose";
+import multer from "multer";
 
 import { registerValidatoin, loginValidatoin, postCreateValidatoin } from "./validations/validations.js";
-import checkAuth from "./utils/checkAuth.js";
-
-import * as UserController from "./controllers/UserController.js";
-import * as PostController from "./controllers/PostController.js";
+import { checkAuth, handleValidationErrors } from "./utils/index.js";
+import { UserController, PostController } from "./controllers/index.js";
 
 // Подключение к базе данных
 mongoose
@@ -14,21 +13,41 @@ mongoose
   .catch((err) => { console.log('DB error', err) });
 
 const app = express(); // запуск Express
+const storage = multer.diskStorage({
+  destination: (_, __, cb) => {
+    cb(null, 'uploads');
+  },
+  filename: (_, file, cb) => {
+    cb(null, file.originalname); 
+  }
+})
+
+const upload = multer({ storage })
 
 app.use(express.json()); // читать JSON в запросах
+app.use('/uploads', express.static('uploads'));
 
 // POST запрос login
-app.post('/auth/login', loginValidatoin, UserController.login)
+app.post('/auth/login', loginValidatoin, handleValidationErrors, UserController.login)
 // POST запрос registration
-app.post('/auth/register', registerValidatoin, UserController.register)
+app.post('/auth/register', registerValidatoin, handleValidationErrors, UserController.register)
 // GET запрос на получение информации о пользователе
 app.get('/auth/me', checkAuth, UserController.getMe)
 
+
+// POST загрузка изображения
+app.post('/upload', checkAuth, upload.single('image'), (req, res) => {
+  res.json({
+    url: `/uploads/${req.file.originalname}`
+  })
+})
+
+// Статьи
 app.get('/posts', PostController.getAll)
 app.get('/posts/:id', PostController.getOne)
-app.post('/posts', checkAuth, postCreateValidatoin, PostController.create)
+app.post('/posts', checkAuth, postCreateValidatoin, handleValidationErrors, PostController.create)
 app.delete('/posts/:id', checkAuth, PostController.remove)
-app.patch('/posts/:id', checkAuth, PostController.update)
+app.patch('/posts/:id', checkAuth, postCreateValidatoin, handleValidationErrors, PostController.update)
 
 // Запуск сервера
 app.listen(4444, (error) => {
