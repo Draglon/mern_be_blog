@@ -8,8 +8,9 @@ import { checkAuth, handleValidationErrors } from "./utils/index.js";
 import { UserController, PostController } from "./controllers/index.js";
 
 // Подключение к базе данных
+// mongodb+srv://admin:draglon750@cluster0.znj5tnf.mongodb.net/blog?retryWrites=true&w=majority&appName=Cluster0
 mongoose
-  .connect('mongodb+srv://admin:draglon750@cluster0.znj5tnf.mongodb.net/blog?retryWrites=true&w=majority&appName=Cluster0')
+  .connect(process.env.MONGODB_URI)
   .then(() => { console.log('DB ok') })
   .catch((err) => { console.log('DB error', err) });
 
@@ -53,7 +54,7 @@ app.delete('/posts/:id', checkAuth, PostController.remove)
 app.patch('/posts/:id', checkAuth, postCreateValidatoin, handleValidationErrors, PostController.update)
 
 // Запуск сервера
-app.listen(4444, (error) => {
+app.listen(process.env.PORT || 4444, (error) => {
   if (error) {
     return console.log(error);
   }
